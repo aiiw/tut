@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>SQL Server 实战教程 —— 以试模任务查询为例</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  background: #f5f7fa;
+  color: #333;
+  line-height: 1.8;
+  padding: 30px;
+}
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 50px 60px;
+}
+h1 {
+  color: #1F4E79;
+  font-size: 32px;
+  text-align: center;
+  padding-bottom: 20px;
+  border-bottom: 3px solid #2E75B6;
+  margin-bottom: 40px;
+}
+h2 {
+  color: #2E75B6;
+  font-size: 24px;
+  margin-top: 45px;
+  margin-bottom: 18px;
+  padding-left: 15px;
+  border-left: 5px solid #2E75B6;
+}
+h3 {
+  color: #333;
+  font-size: 18px;
+  margin-top: 25px;
+  margin-bottom: 12px;
+  color: #1F4E79;
+}
+p { margin-bottom: 12px; }
+.code-block {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border-radius: 8px;
+  padding: 18px 22px;
+  margin: 15px 0;
+  overflow-x: auto;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.code-block .keyword { color: #569cd6; }
+.code-block .func { color: #dcdcaa; }
+.code-block .str { color: #ce9178; }
+.code-block .comment { color: #6a9955; font-style: italic; }
+.code-block .var { color: #c586c0; }
+.code-block .num { color: #b5cea8; }
+.tip {
+  background: #e8f4fd;
+  border-left: 4px solid #2E75B6;
+  padding: 15px 20px;
+  margin: 15px 0;
+  border-radius: 0 8px 8px 0;
+}
+.tip::before {
+  content: "💡 提示：";
+  font-weight: bold;
+  color: #2E75B6;
+}
+.warn {
+  background: #fff4e5;
+  border-left: 4px solid #e8a33d;
+  padding: 15px 20px;
+  margin: 15px 0;
+  border-radius: 0 8px 8px 0;
+}
+.warn::before {
+  content: "⚠️ 注意：";
+  font-weight: bold;
+  color: #c77700;
+}
+ul, ol { padding-left: 30px; margin-bottom: 12px; }
+li { margin-bottom: 6px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 15px 0;
+  font-size: 14px;
+}
+th {
+  background: #D5E8F0;
+  color: #1F4E79;
+  padding: 10px 15px;
+  text-align: left;
+  border: 1px solid #a8c8dc;
+  font-weight: bold;
+}
+td {
+  padding: 10px 15px;
+  border: 1px solid #d0dce5;
+}
+tr:nth-child(even) td { background: #f7fafd; }
+.highlight {
+  background: #fffde7;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-weight: bold;
+  color: #c77700;
+}
+.tag {
+  display: inline-block;
+  background: #2E75B6;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin-right: 8px;
+}
+.toc {
+  background: #f0f6fa;
+  border-radius: 8px;
+  padding: 20px 30px;
+  margin-bottom: 30px;
+}
+.toc h3 { margin-top: 0; color: #1F4E79; }
+.toc a {
+  color: #2E75B6;
+  text-decoration: none;
+  display: block;
+  padding: 4px 0;
+}
+.toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>SQL Server 实战教程<br><span style="font-size:18px;color:#666;font-weight:normal;">—— 以 sp_mold_test_task_query 试模任务查询为例</span></h1>
+
+<div class="toc">
+<h3>📚 目录</h3>
+<a href="#sec1">一、存储过程基础</a>
+<a href="#sec2">二、存储过程的输入输出参数</a>
+<a href="#sec3">三、临时表、表变量与索引</a>
+<a href="#sec4">四、动态 SQL 拼接</a>
+<a href="#sec5">五、各种 JOIN 用法</a>
+<a href="#sec6">六、OUTER APPLY 与 CROSS APPLY</a>
+<a href="#sec7">七、字符串函数</a>
+<a href="#sec8">八、日期时间处理</a>
+<a href="#sec9">九、EXISTS 与 NOT EXISTS</a>
+<a href="#sec10">十、DELETE / UPDATE 关联写法</a>
+<a href="#sec11">十一、OUTPUT 子句与 inserted/deleted 表</a>
+<a href="#sec12">十二、子查询与 TOP 1 技巧</a>
+<a href="#sec13">十三、TRY_CONVERT 安全转换</a>
+<a href="#sec14">十四、整体架构与优化思路</a>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec1">一、存储过程基础</h2>
+
+<p>存储过程是一组预编译的 SQL 语句，可以接收参数、返回结果。这是 SQL Server 最常用的编程对象之一。</p>
+
+<h3>1.1 创建语法</h3>
+
+<div class="code-block">
+<span class="keyword">CREATE PROCEDURE</span> [dbo].[sp_mold_test_task_query]
+    @org_no <span class="keyword">VARCHAR</span>(<span class="num">20</span>) = <span class="str">'003'</span>,
+    @query_type <span class="keyword">CHAR</span>(<span class="num">1</span>) = <span class="str">'1'</span>,
+    @trial_date_checked <span class="keyword">BIT</span> = <span class="num">0</span>,
+    @mold_no <span class="keyword">VARCHAR</span>(<span class="num">50</span>) = <span class="str">''</span>
+<span class="keyword">AS</span>
+<span class="keyword">BEGIN</span>
+    <span class="keyword">SET NOCOUNT ON</span>;
+    <span class="comment">-- 业务逻辑写在这里</span>
+<span class="keyword">END</span>
+</div>
+
+<p>要点：</p>
+<ul>
+  <li><b>参数定义</b>：参数名以 <code>@</code> 开头，可以设置默认值。调用时不传就用默认值。</li>
+  <li><b>SET NOCOUNT ON</b>：禁止返回"影响行数"消息，减少网络开销，是存储过程的标准写法。</li>
+  <li><b>BEGIN...END</b>：代码块的边界，类似其他语言的花括号 <code>{ }</code>。</li>
+</ul>
+
+<h3>1.2 调用方式</h3>
+
+<div class="code-block">
+<span class="comment">-- 完整调用（指定参数名，推荐）</span>
+<span class="keyword">EXEC</span> dbo.sp_mold_test_task_query
+    @org_no = <span class="str">'003'</span>,
+    @query_type = <span class="str">'1'</span>,
+    @mold_no = <span class="str">'100X44X1.8-2012'</span>;
+
+<span class="comment">-- 简写（按参数顺序传）</span>
+<span class="keyword">EXEC</span> dbo.sp_mold_test_task_query <span class="str">'003'</span>, <span class="str">'1'</span>;
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec2">二、存储过程的输入输出参数</h2>
+
+<p>存储过程的参数不仅可以"传入"，还可以"传出"。本脚本用的都是输入参数，这里系统讲一下参数的几种类型。</p>
+
+<h3>2.1 输入参数（默认）</h3>
+<p>默认情况下，参数都是输入参数，调用时把值传进去。</p>
+
+<div class="code-block">
+<span class="keyword">CREATE PROCEDURE</span> dbo.sp_demo
+    @mold_no <span class="keyword">VARCHAR</span>(<span class="num">50</span>) = <span class="str">''</span>   <span class="comment">-- 输入参数，有默认值</span>
+<span class="keyword">AS</span>
+<span class="keyword">BEGIN</span>
+    <span class="keyword">SELECT</span> * <span class="keyword">FROM</span> tb_bas_mold <span class="keyword">WHERE</span> mold_no = @mold_no
+<span class="keyword">END</span>
+</div>
+
+<h3>2.2 输出参数（OUTPUT）</h3>
+<p>在参数后面加 <code>OUTPUT</code> 关键字，就是输出参数。存储过程内部给它赋值，调用者能拿到这个值。</p>
+
+<div class="code-block">
+<span class="keyword">CREATE PROCEDURE</span> dbo.sp_get_mold_count
+    @prdt_no <span class="keyword">VARCHAR</span>(<span class="num">50</span>),
+    @mold_count <span class="keyword">INT</span> <span class="keyword">OUTPUT</span>     <span class="comment">-- 输出参数</span>
+<span class="keyword">AS</span>
+<span class="keyword">BEGIN</span>
+    <span class="keyword">SELECT</span> @mold_count = <span class="func">COUNT</span>(<span class="num">1</span>)
+    <span class="keyword">FROM</span> tb_bas_mold
+    <span class="keyword">WHERE</span> prdt_no = @prdt_no
+<span class="keyword">END</span>
+</div>
+
+<p>调用方式（注意调用时也要加 OUTPUT）：</p>
+
+<div class="code-block">
+<span class="keyword">DECLARE</span> @cnt <span class="keyword">INT</span>
+<span class="keyword">EXEC</span> dbo.sp_get_mold_count
+    @prdt_no = <span class="str">'6063'</span>,
+    @mold_count = @cnt <span class="keyword">OUTPUT</span>
+
+<span class="comment">-- 现在 @cnt 里就是返回的数量了</span>
+<span class="keyword">PRINT</span> @cnt
+</div>
+
+<h3>2.3 输入输出参数（既进又出）</h3>
+<p>OUTPUT 参数也可以同时作为输入——调用时传一个初始值进去，过程中修改它，再传出来。</p>
+
+<div class="code-block">
+<span class="keyword">CREATE PROCEDURE</span> dbo.sp_add_test_times
+    @times <span class="keyword">INT</span> <span class="keyword">OUTPUT</span>
+<span class="keyword">AS</span>
+<span class="keyword">BEGIN</span>
+    <span class="keyword">SET</span> @times = @times + <span class="num">1</span>
+<span class="keyword">END</span>
+</div>
+
+<h3>2.4 返回值（RETURN）</h3>
+<p>除了 OUTPUT 参数，存储过程还可以用 <code>RETURN</code> 返回一个整数值，通常用来表示执行状态（0 表示成功，非 0 表示错误码）。</p>
+
+<div class="code-block">
+<span class="keyword">CREATE PROCEDURE</span> dbo.sp_check_mold
+    @mold_no <span class="keyword">VARCHAR</span>(<span class="num">50</span>)
+<span class="keyword">AS</span>
+<span class="keyword">BEGIN</span>
+    <span class="keyword">IF NOT EXISTS</span> (<span class="keyword">SELECT</span> <span class="num">1</span> <span class="keyword">FROM</span> tb_bas_mold <span class="keyword">WHERE</span> mold_no = @mold_no)
+        <span class="keyword">RETURN</span> -<span class="num">1</span>  <span class="comment">-- 模具不存在，返回错误码</span>
+
+    <span class="keyword">RETURN</span> <span class="num">0</span>       <span class="comment">-- 成功</span>
+<span class="keyword">END</span>
+</div>
+
+<p>调用时接收返回值：</p>
+
+<div class="code-block">
+<span class="keyword">DECLARE</span> @ret <span class="keyword">INT</span>
+<span class="keyword">EXEC</span> @ret = dbo.sp_check_mold @mold_no = <span class="str">'XXX'</span>
+<span class="keyword">PRINT</span> <span class="str">'返回值：'</span> + <span class="func">CAST</span>(@ret <span class="keyword">AS VARCHAR</span>)
+</div>
+
+<h3>2.5 三种"返回数据"方式对比</h3>
+
+<table>
+<tr><th>方式</th><th>返回数量</th><th>类型限制</th><th>典型用途</th></tr>
+<tr><td>SELECT 结果集</td><td>可以多个结果集</td><td>任意</td><td>返回查询数据（报表、列表）</td></tr>
+<tr><td>OUTPUT 参数</td><td>可以多个</td><td>标量值（单值）</td><td>返回计算结果、状态值</td></tr>
+<tr><td>RETURN 返回值</td><td>只能 1 个</td><td>只能是 INT</td><td>返回执行状态/错误码</td></tr>
+</table>
+
+<div class="tip">
+本脚本（sp_mold_test_task_query）用的就是"SELECT 结果集"的方式——最后一句 <code>SELECT * FROM #t_Result1</code> 把最终数据作为结果集返回给调用方。这是报表查询类存储过程最常见的模式。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec3">三、临时表、表变量与索引</h2>
+
+<p>复杂查询中，临时表是性能优化的利器。把大数据量的中间结果缓存起来，避免重复计算。</p>
+
+<h3>3.1 临时表的创建</h3>
+
+<div class="code-block">
+<span class="comment">-- 先判断是否存在，存在则删除</span>
+<span class="keyword">IF</span> <span class="func">OBJECT_ID</span>(<span class="str">'tempdb..#mold_test_task'</span>) <span class="keyword">IS NOT NULL</span>
+    <span class="keyword">DROP TABLE</span> #mold_test_task
+
+<span class="comment">-- 创建临时表</span>
+<span class="keyword">CREATE TABLE</span> #mold_test_task
+(
+    sheet_no <span class="keyword">VARCHAR</span>(<span class="num">50</span>),
+    mold_no <span class="keyword">VARCHAR</span>(<span class="num">50</span>),
+    trial_date <span class="keyword">DATETIME</span>,
+    test_times <span class="keyword">INT</span>
+)
+
+<span class="comment">-- 给临时表建索引（关键！提升后续查询性能）</span>
+<span class="keyword">CREATE NONCLUSTERED INDEX</span> IX_#mold_test_task_sheet_no
+<span class="keyword">ON</span> #mold_test_task (sheet_no <span class="keyword">ASC</span>)
+
+<span class="keyword">CREATE CLUSTERED INDEX</span> IX_#mold_test_task_mold_no
+<span class="keyword">ON</span> #mold_test_task (mold_no <span class="keyword">ASC</span>)
+</div>
+
+<p><b>临时表命名规则：</b></p>
+<ul>
+  <li><code>#表名</code> — 局部临时表，只在当前会话中有效，会话断开自动删除。</li>
+  <li><code>##表名</code> — 全局临时表，所有会话都能访问，一般用得少。</li>
+</ul>
+
+<h3>3.2 临时表 vs 表变量</h3>
+<p>很多新手搞不清这两者的区别，这是面试高频题，也是实际开发中必须掌握的。</p>
+
+<table>
+<tr><th>对比项</th><th>临时表 (#table)</th><th>表变量 (@table)</th></tr>
+<tr><td>定义方式</td><td>CREATE TABLE #t(...)</td><td>DECLARE @t TABLE(...)</td></tr>
+<tr><td>存储位置</td><td>tempdb 数据库</td><td>tempdb 数据库（内存优先，大了落盘）</td></tr>
+<tr><td>作用域</td><td>当前会话（存储过程内及子调用）</td><td>当前批处理（仅当前语句块）</td></tr>
+<tr><td>能否建索引</td><td>可以随便建（CREATE INDEX）</td><td>只能有主键/唯一约束（隐式索引）</td></tr>
+<tr><td>能否参与事务</td><td>可以，事务回滚会影响</td><td>不参与事务回滚</td></tr>
+<tr><td>统计信息</td><td>有，优化器能生成好的执行计划</td><td>没有，优化器默认行数很少，数据量大时计划可能很差</td></tr>
+<tr><td>可以在动态 SQL 中访问</td><td>可以</td><td>不行（动态 SQL 是另一个批处理）</td></tr>
+<tr><td>数据量建议</td><td>从几十行到几百万行都行</td><td>建议 1 万行以内，最好几百行以内</td></tr>
+<tr><td>重新编译</td><td>可能导致存储过程重编译</td><td>不会</td></tr>
+</table>
+
+<p><b>举个表变量的例子：</b></p>
+
+<div class="code-block">
+<span class="keyword">DECLARE</span> @mold_list <span class="keyword">TABLE</span>
+(
+    sn_code <span class="keyword">VARCHAR</span>(<span class="num">50</span>) <span class="keyword">PRIMARY KEY</span>,
+    mold_no <span class="keyword">VARCHAR</span>(<span class="num">50</span>)
+)
+
+<span class="keyword">INSERT INTO</span> @mold_list(sn_code, mold_no)
+<span class="keyword">SELECT</span> sn_code, mold_no <span class="keyword">FROM</span> tb_bas_mold <span class="keyword">WHERE</span> prdt_no = <span class="str">'6063'</span>
+</div>
+
+<div class="tip">
+什么时候用哪个？简单判断：<br>
+<b>数据量小（几百行以内）、结构简单</b> → 用表变量，轻量、快、不占 tempdb 太多资源。<br>
+<b>数据量大、需要建索引、要在动态 SQL 里用</b> → 用临时表。<br>
+本脚本数据量大、还有索引，所以全部用临时表，这是正确的选择。
+</div>
+
+<h3>3.3 全局临时表 vs 局部临时表</h3>
+
+<table>
+<tr><th>类型</th><th>写法</th><th>作用域</th><th>何时删除</th><th>适用场景</th></tr>
+<tr><td>局部临时表</td><td>#table</td><td>当前会话</td><td>会话结束或 DROP</td><td>存储过程内中间计算（最常用）</td></tr>
+<tr><td>全局临时表</td><td>##table</td><td>所有会话</td><td>最后一个引用它的会话结束</td><td>跨会话共享数据（极少用，注意并发）</td></tr>
+</table>
+
+<h3>3.4 索引的作用</h3>
+<p>本脚本给每个临时表都建了索引，这是非常好的实践。</p>
+
+<p><b>聚集索引（Clustered Index）</b>：数据物理上按索引顺序存储。一张表只能有一个聚集索引。</p>
+<p><b>非聚集索引（Nonclustered Index）</b>：独立于数据的索引结构，指向数据行。一张表可以有多个。</p>
+
+<p>给临时表建索引的好处：</p>
+<ul>
+  <li>后续 JOIN 时大幅加速</li>
+  <li>WHERE 条件过滤更快</li>
+  <li>GROUP BY / ORDER BY 可以利用索引避免排序</li>
+</ul>
+
+<div class="warn">
+索引不是越多越好！每个索引都要占用空间，而且写入（INSERT/UPDATE/DELETE）时都要维护索引。临时表一般是"一次写入、多次读取"，所以建索引很划算。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec4">四、动态 SQL 拼接</h2>
+
+<p>当筛选条件是动态的（用户可能选也可能不选），最灵活的方式就是用字符串拼接 SQL，然后 <code>EXEC</code> 执行。</p>
+
+<h3>4.1 基本思路</h3>
+
+<div class="code-block">
+<span class="keyword">DECLARE</span> @sql <span class="keyword">VARCHAR</span>(<span class="func">MAX</span>),
+        @Condition <span class="keyword">VARCHAR</span>(<span class="func">MAX</span>)
+
+<span class="comment">-- 初始化条件为空</span>
+<span class="keyword">SELECT</span> @Condition = <span class="str">''</span>
+
+<span class="comment">-- 根据参数动态拼接条件</span>
+<span class="keyword">IF</span> @mold_no &lt;&gt; <span class="str">''</span>
+<span class="keyword">BEGIN</span>
+    <span class="keyword">SET</span> @Condition = @Condition + <span class="str">' And t.mold_no Like ''%'</span> + @mold_no + <span class="str">'%'' '</span>
+<span class="keyword">END</span>
+
+<span class="keyword">IF</span> @pro_line_no &lt;&gt; <span class="str">''</span>
+<span class="keyword">BEGIN</span>
+    <span class="keyword">SET</span> @Condition = @Condition + <span class="str">' And t.testmold_dev = '''</span> + @pro_line_no + <span class="str">''''</span>
+<span class="keyword">END</span>
+
+<span class="comment">-- 拼接完整 SQL 并执行</span>
+<span class="keyword">SET</span> @sql = <span class="str">'SELECT * FROM dbo.tb_mold_trial_detail t WHERE 1=1 '</span> + @Condition
+<span class="keyword">EXEC</span> (@sql)
+</div>
+
+<h3>4.2 几个关键技巧</h3>
+
+<p><b>① WHERE 1=1 的妙用</b></p>
+<p>用 <code>WHERE 1=1</code> 做占位，后面所有条件都可以统一用 <code>AND ...</code> 拼接，不用判断第一个条件要不要加 AND。</p>
+
+<p><b>② 单引号转义</b></p>
+<p>在字符串里写单引号，要用两个单引号 <code>''</code> 表示一个单引号。比如：</p>
+
+<div class="code-block">
+<span class="comment">-- 最终效果：And t.mold_no Like '%abc%'</span>
+<span class="keyword">SET</span> @Condition = <span class="str">' And t.mold_no Like ''%'</span> + @mold_no + <span class="str">'%'' '</span>
+</div>
+
+<div class="warn">
+动态 SQL 有 SQL 注入风险！如果参数来自用户输入，要做安全校验。本脚本参数都是内部系统传的，所以问题不大。
+</div>
+
+<p><b>③ PRINT 调试</b></p>
+<p>脚本中用了 <code>PRINT @sqltext1</code> 来打印拼接好的 SQL，这是调试动态 SQL 的必备技巧。在 SSMS 的"消息"窗口能看到完整 SQL，复制出来单独执行就能排查问题。</p>
+
+<h3>4.3 更安全的方式：sp_executesql 参数化</h3>
+<p>直接拼接字符串有注入风险，更规范的写法是用 <code>sp_executesql</code> 传参数：</p>
+
+<div class="code-block">
+<span class="keyword">DECLARE</span> @sql <span class="keyword">NVARCHAR</span>(<span class="func">MAX</span>)
+<span class="keyword">SET</span> @sql = N<span class="str">'
+    SELECT *
+    FROM dbo.tb_mold_trial_detail t
+    WHERE t.org_no = @org_no
+      AND t.mold_no LIKE ''%'' + @mold_no + ''%''
+'</span>
+
+<span class="keyword">EXEC</span> sp_executesql
+    @sql,
+    N<span class="str">'@org_no VARCHAR(20), @mold_no VARCHAR(50)'</span>,
+    @org_no = @org_no,
+    @mold_no = @mold_no
+</div>
+
+<p>好处：</p>
+<ul>
+  <li>防 SQL 注入</li>
+  <li>执行计划可以复用，性能更好</li>
+  <li>不用处理单引号转义，代码更清爽</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="sec5">五、各种 JOIN 用法</h2>
+
+<p>本脚本用到了多种 JOIN 方式，是学习 JOIN 的好例子。</p>
+
+<h3>5.1 INNER JOIN（内连接）</h3>
+<p>只返回两边都匹配的行。</p>
+
+<div class="code-block">
+<span class="keyword">FROM</span> dbo.tb_mold_trial_detail t <span class="keyword">WITH</span> (NOLOCK)
+<span class="keyword">INNER JOIN</span> dbo.tb_bas_mold <span class="keyword">AS</span> TBM <span class="keyword">WITH</span> (NOLOCK)
+    <span class="keyword">ON</span> TBM.sn_code = t.sn_code
+</div>
+
+<p>含义：只保留"试模任务表中存在，且模具基础表也存在"的记录。如果某个试模任务的 sn_code 在模具表里找不到，这条记录就被过滤掉了。</p>
+
+<h3>5.2 LEFT JOIN（左连接）</h3>
+<p>左表全部保留，右表匹配不上的地方显示 NULL。</p>
+
+<div class="code-block">
+<span class="keyword">LEFT JOIN</span> dbo.tb_mold_trial_conclusion <span class="keyword">AS</span> TMTC <span class="keyword">WITH</span> (NOLOCK)
+    <span class="keyword">ON</span> TMTC.sheet_no = t.sheet_no
+</div>
+
+<p>含义：所有试模任务都保留，即使还没出检验结论（没有结论记录），结论字段就是 NULL。</p>
+
+<h3>5.3 WITH (NOLOCK)</h3>
+<p>脚本里几乎每个表后面都加了 <code>WITH (NOLOCK)</code>，这是什么意思？</p>
+
+<div class="code-block">
+<span class="keyword">FROM</span> dbo.tb_mold_trial_detail t <span class="keyword">WITH</span> (NOLOCK)
+</div>
+
+<p><b>NOLOCK = 不锁表、不等待锁。</b>读数据的时候不加共享锁，别人改数据也不阻塞你。</p>
+<p>好处：查询速度快，不会被阻塞。</p>
+<p>坏处：可能读到"脏读"（别人还没提交的数据，如果他回滚了你读的就是错的）。</p>
+
+<div class="tip">
+报表类查询、对数据精度要求不极致的场景，NOLOCK 是常用的性能优化手段。但涉及金额、库存等关键数据不要用。
+</div>
+
+<h3>5.4 JOIN 类型总结</h3>
+
+<table>
+<tr><th>类型</th><th>效果</th><th>什么时候用</th></tr>
+<tr><td>INNER JOIN</td><td>只返回两边都匹配的行</td><td>两表数据都必须存在，比如主表+字典表</td></tr>
+<tr><td>LEFT JOIN</td><td>左表全保留，右表不匹配的为 NULL</td><td>主数据要全保留，附加信息可能没有</td></tr>
+<tr><td>RIGHT JOIN</td><td>右表全保留（基本不用，都改成 LEFT JOIN 写）</td><td>—</td></tr>
+<tr><td>FULL JOIN</td><td>两边都保留，匹配不上的为 NULL</td><td>数据对比、全量合并，很少用</td></tr>
+<tr><td>CROSS JOIN</td><td>笛卡尔积，两边所有组合</td><td>极少用，一般是写错了</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="sec6">六、OUTER APPLY 与 CROSS APPLY</h2>
+
+<p>这是 SQL Server 比较高级的用法，也是本脚本的亮点之一。</p>
+
+<h3>6.1 什么是 APPLY</h3>
+<p>APPLY 可以理解为"对左表的每一行，都执行一次右边的子查询/表值函数"。</p>
+
+<ul>
+  <li><b>OUTER APPLY</b>：类似 LEFT JOIN，右表没数据也保留左表行（右边字段为 NULL）</li>
+  <li><b>CROSS APPLY</b>：类似 INNER JOIN，右表没数据则左表行也被过滤</li>
+</ul>
+
+<h3>6.2 脚本中的例子</h3>
+
+<div class="code-block">
+<span class="keyword">OUTER APPLY</span>
+(
+    <span class="keyword">SELECT</span>
+        p.product_type,
+        p.show_density,
+        p.difficulty,
+        p.alloy_no + <span class="str">'-'</span> + p.alloy_sta <span class="keyword">AS</span> alloy_state
+    <span class="keyword">FROM</span> zgDmp.dbo.tb_bas_product p <span class="keyword">WITH</span> (NOLOCK)
+    <span class="keyword">WHERE</span> TBM.prdt_no = p.prdt_no
+) p
+</div>
+
+<p>这个 OUTER APPLY 的效果跟 LEFT JOIN 几乎一样，但写法更灵活——右表可以是一个复杂的子查询。</p>
+
+<h3>6.3 什么时候用 APPLY 而不用 JOIN？</h3>
+<ul>
+  <li>右表是一个表值函数（比如 <code>dbo.func_name(col)</code>）</li>
+  <li>右表需要引用左表的列做 TOP N 过滤</li>
+  <li>逻辑上更清晰，把一组相关字段封装在一起</li>
+</ul>
+
+<p>再看一个更能体现 APPLY 优势的例子（脚本里的专用垫查询）：</p>
+
+<div class="code-block">
+<span class="keyword">OUTER APPLY</span>
+(
+    <span class="keyword">SELECT</span>
+        <span class="func">STRING_AGG</span>(TMSSP.special_pad_no, <span class="str">';'</span>) <span class="keyword">AS</span> special_pad_no
+    <span class="keyword">FROM</span> dbo.tb_mold_set_special_pad <span class="keyword">AS</span> TMSSP <span class="keyword">WITH</span> (NOLOCK)
+    <span class="keyword">WHERE</span> TMSSP.sn_code = t.sn_code
+) <span class="keyword">AS</span> spec_pad
+</div>
+
+<p>这里把"专用垫编号拼接"的逻辑封装在一个 OUTER APPLY 里，主查询看起来更干净。</p>
+
+<!-- ============================================================ -->
+<h2 id="sec7">七、字符串函数</h2>
+
+<p>脚本中用到了不少字符串处理函数，挑几个常用的讲：</p>
+
+<h3>7.1 STRING_AGG — 字符串聚合</h3>
+<p>把多行的值拼成一个字符串，用指定分隔符分隔。</p>
+
+<div class="code-block">
+<span class="comment">-- 把一个模具的所有专用垫编号用分号拼起来</span>
+<span class="keyword">SELECT</span> <span class="func">STRING_AGG</span>(special_pad_no, <span class="str">';'</span>) <span class="keyword">AS</span> special_pad_no
+<span class="keyword">FROM</span> dbo.tb_mold_set_special_pad
+<span class="keyword">WHERE</span> sn_code = @sn_code
+</div>
+
+<p>结果示例：<code>垫A;垫B;垫C</code></p>
+
+<h3>7.2 CONCAT — 字符串拼接</h3>
+<p>比用 <code>+</code> 更安全，遇到 NULL 不会返回 NULL，会自动转成空字符串。</p>
+
+<div class="code-block">
+<span class="comment">-- 拼接文件ID前缀</span>
+<span class="func">CONCAT</span>(<span class="str">'DMP_'</span>, small_pic.file_id) <span class="keyword">AS</span> small_file_id
+</div>
+
+<h3>7.3 ISNULL — 空值替换</h3>
+<p>如果第一个参数为 NULL，返回第二个参数。</p>
+
+<div class="code-block">
+<span class="func">ISNULL</span>(t.specialpad, spec_pad.special_pad_no) <span class="keyword">AS</span> specialpad
+</div>
+
+<p>含义：如果 t.specialpad 不为空就用它，否则用 spec_pad.special_pad_no。</p>
+
+<p>类似的还有 <code>COALESCE</code>，可以接收多个参数，返回第一个非 NULL 的值：</p>
+<div class="code-block">
+<span class="func">COALESCE</span>(a, b, c, <span class="str">'默认值'</span>)
+</div>
+
+<h3>7.4 LIKE — 模糊查询</h3>
+
+<div class="code-block">
+<span class="comment">-- 模具编码包含某值</span>
+t.mold_no <span class="keyword">Like</span> <span class="str">'%'</span> + @mold_no + <span class="str">'%'</span>
+</div>
+
+<p><code>%</code> 是通配符，代表任意字符（可以是 0 个、1 个或多个）。</p>
+<p>其他通配符：</p>
+<ul>
+  <li><code>_</code> — 匹配任意单个字符</li>
+  <li><code>[abc]</code> — 匹配 a、b、c 中的任意一个</li>
+  <li><code>[^abc]</code> — 不匹配 a、b、c 中的任意一个</li>
+</ul>
+
+<h3>7.5 FORMAT — 格式化</h3>
+
+<div class="code-block">
+<span class="comment">-- 日期格式化</span>
+trial_date_day = <span class="func">CAST</span>(<span class="func">FORMAT</span>(a.trial_date, <span class="str">'yyyy-MM-dd'</span>) <span class="keyword">AS</span> <span class="keyword">VARCHAR</span>(<span class="num">20</span>))
+trial_date_time = <span class="func">CAST</span>(<span class="func">FORMAT</span>(a.trial_date, <span class="str">'HH:mm:ss'</span>) <span class="keyword">AS</span> <span class="keyword">VARCHAR</span>(<span class="num">20</span>))
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec8">八、日期时间处理</h2>
+
+<h3>8.1 GETDATE() — 当前时间</h3>
+
+<div class="code-block">
+<span class="comment">-- 模具状态持续时间 = 当前时间 - 状态变更时间</span>
+<span class="keyword">UPDATE</span> #t_Result1
+<span class="keyword">SET</span> mold_status_duration = <span class="func">DATEDIFF</span>(<span class="keyword">HOUR</span>, sta_time, <span class="func">GETDATE</span>())
+</div>
+
+<h3>8.2 DATEDIFF — 时间差</h3>
+
+<div class="code-block">
+<span class="func">DATEDIFF</span>(<span class="keyword">DAY</span>, start_date, end_date)   <span class="comment">-- 相差多少天</span>
+<span class="func">DATEDIFF</span>(<span class="keyword">HOUR</span>, start_time, end_time) <span class="comment">-- 相差多少小时</span>
+<span class="func">DATEDIFF</span>(<span class="keyword">MINUTE</span>, t1, t2)        <span class="comment">-- 相差多少分钟</span>
+</div>
+
+<p>脚本中判断试模是否超时：</p>
+<div class="code-block">
+<span class="func">DATEDIFF</span>(<span class="keyword">DAY</span>, a.first_down_time, <span class="func">ISNULL</span>(a.check_time, <span class="func">GETDATE</span>())) > oo.time_limit
+</div>
+
+<h3>8.3 DATEADD — 日期加减</h3>
+
+<div class="code-block">
+<span class="func">DATEADD</span>(<span class="keyword">DAY</span>, <span class="num">7</span>, getdate())    <span class="comment">-- 7天后</span>
+<span class="func">DATEADD</span>(<span class="keyword">HOUR</span>, -<span class="num">2</span>, getdate()) <span class="comment">-- 2小时前</span>
+</div>
+
+<h3>8.4 构造当天起止时间</h3>
+<p>脚本中的做法：</p>
+
+<div class="code-block">
+<span class="keyword">SET</span> @trial_datetime_beg = <span class="func">TRY_CONVERT</span>(<span class="keyword">DATETIME</span>,
+    <span class="func">CONVERT</span>(<span class="keyword">VARCHAR</span>(<span class="num">10</span>), @trial_date_beg) + <span class="str">' 00:00:00'</span>)
+<span class="keyword">SET</span> @trial_datetime_end = <span class="func">TRY_CONVERT</span>(<span class="keyword">DATETIME</span>,
+    <span class="func">CONVERT</span>(<span class="keyword">VARCHAR</span>(<span class="num">10</span>), @trial_date_end) + <span class="str">' 23:59:59'</span>)
+</div>
+
+<p>更简洁的写法（SQL Server 2012+）：</p>
+<div class="code-block">
+<span class="keyword">SET</span> @trial_datetime_beg = <span class="func">CAST</span>(<span class="func">CAST</span>(@trial_date_beg <span class="keyword">AS DATE</span>) <span class="keyword">AS DATETIME</span>)
+<span class="keyword">SET</span> @trial_datetime_end = <span class="func">DATEADD</span>(<span class="keyword">SECOND</span>, -<span class="num">1</span>,
+    <span class="func">CAST</span>(<span class="func">DATEADD</span>(<span class="keyword">DAY</span>, <span class="num">1</span>, <span class="func">CAST</span>(@trial_date_end <span class="keyword">AS DATE</span>)) <span class="keyword">AS DATETIME</span>))
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec9">九、EXISTS 与 NOT EXISTS</h2>
+
+<p>EXISTS 用来判断"有没有"，只要子查询返回至少一行，就为真。它比 COUNT(*) 效率更高，因为找到第一行就停止了。</p>
+
+<h3>9.1 判断产线是否属于某个组织</h3>
+
+<div class="code-block">
+<span class="keyword">AND EXISTS</span> (
+    <span class="keyword">SELECT</span> <span class="num">1</span>
+    <span class="keyword">FROM</span> zgDmp.dbo.tb_bas_eqm_line <span class="keyword">AS</span> TBEL <span class="keyword">WITH</span> (NOLOCK)
+    <span class="keyword">WHERE</span> TBEL.eqm_line_no = t.testmold_dev
+          <span class="keyword">AND</span> TBEL.org_no = <span class="str">'003'</span>
+)
+</div>
+
+<p>含义：这条试模任务的产线，必须属于 003 组织。</p>
+
+<h3>9.2 EXISTS vs IN</h3>
+
+<table>
+<tr><th>写法</th><th>示例</th><th>适用场景</th></tr>
+<tr><td>EXISTS</td><td>WHERE EXISTS (SELECT 1 ... WHERE a.id = b.id)</td><td>子查询数据量大时更快</td></tr>
+<tr><td>IN</td><td>WHERE id IN (SELECT id FROM ...)</td><td>子查询结果集小时更直观</td></tr>
+</table>
+
+<div class="tip">
+一般来说，两张表都很大时 EXISTS 性能更好；子查询结果很少时 IN 更直观。实际开发中 EXISTS 用得更多，因为不容易出 NULL 陷阱（IN 的子查询里如果有 NULL 值，整个结果就都不对了）。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec10">十、DELETE / UPDATE 关联写法</h2>
+
+<h3>10.1 DELETE 带 JOIN / EXISTS</h3>
+<p>SQL Server 支持 DELETE 时关联其他表做条件判断。</p>
+
+<div class="code-block">
+<span class="comment">-- 删除未试模但已再利用的记录</span>
+<span class="keyword">DELETE</span> t
+<span class="keyword">FROM</span> #mold_test_task t
+<span class="keyword">WHERE</span> test_fin_sw = <span class="str">'0'</span>
+      <span class="keyword">AND EXISTS</span> (
+          <span class="keyword">SELECT</span> <span class="num">1</span>
+          <span class="keyword">FROM</span> dbo.tb_bas_mold
+          <span class="keyword">WHERE</span> sn_code = t.sn_code
+                <span class="keyword">AND</span> status <span class="keyword">IN</span> (<span class="str">'127'</span>, <span class="str">'250'</span>, <span class="str">'140'</span>, <span class="str">'214'</span>)
+      )
+</div>
+
+<p>语法要点：<code>DELETE 别名 FROM 表名 别名 ...</code>，先写要删的表别名，再写 FROM 和条件。</p>
+
+<h3>10.2 UPDATE 带 JOIN / OUTER APPLY</h3>
+
+<div class="code-block">
+<span class="keyword">UPDATE</span> t
+<span class="keyword">SET</span> t.mold_cnt = <span class="func">ISNULL</span>(c.mold_cnt, <span class="num">0</span>)
+<span class="keyword">FROM</span> #mold_test_task t
+    <span class="keyword">OUTER APPLY</span> (
+        <span class="keyword">SELECT</span> <span class="func">COUNT</span>(<span class="num">1</span>) <span class="keyword">AS</span> mold_cnt
+        <span class="keyword">FROM</span> dbo.tb_bas_mold <span class="keyword">WITH</span> (NOLOCK)
+        <span class="keyword">WHERE</span> prdt_no = t.prdt_no
+              <span class="keyword">AND</span> sn_code &lt;&gt; t.sn_code
+              <span class="keyword">AND</span> status <span class="keyword">NOT IN</span> (<span class="str">'127'</span>, <span class="str">'250'</span>, <span class="str">'140'</span>, <span class="str">'214'</span>)
+    ) c
+</div>
+
+<p>这种写法非常实用：从另一个表计算出一个值，更新回主表。比写子查询更灵活。</p>
+
+<!-- ============================================================ -->
+<h2 id="sec11">十一、OUTPUT 子句与 inserted/deleted 表</h2>
+
+<p>这是 SQL Server 非常有特色也非常实用的功能，做日志、状态变化判断、批量联动处理时经常用到。</p>
+
+<h3>11.1 inserted 和 deleted 是什么</h3>
+
+<p>它们是 SQL Server 自动生成的两张<b>特殊临时表</b>，只在触发器或带 OUTPUT 子句的 DML 语句执行期间存在，用来存放"改动前后的数据"。</p>
+
+<table>
+<tr><th>特殊表</th><th>含义</th><th>INSERT 时</th><th>UPDATE 时</th><th>DELETE 时</th></tr>
+<tr><td><b>inserted</b></td><td>新值 / 新行</td><td>新插入的行</td><td>更新后的新值</td><td>空（无数据）</td></tr>
+<tr><td><b>deleted</b></td><td>旧值 / 旧行</td><td>空（无数据）</td><td>更新前的旧值</td><td>被删除的行</td></tr>
+</table>
+
+<div class="tip">
+记住一个简单规律：UPDATE = 先删旧的（进 deleted），再插新的（进 inserted）。所以 UPDATE 时两张表都有数据，而且行数一样多，通过主键可以一一对应。
+</div>
+
+<h3>11.2 OUTPUT 子句的基本用法</h3>
+
+<p><b>OUTPUT</b> 子句可以加在 INSERT / UPDATE / DELETE 语句后面，把变动的数据直接输出（或存起来）。</p>
+
+<p>最简单的用法——直接输出改动结果：</p>
+
+<div class="code-block">
+<span class="keyword">UPDATE</span> dbo.tb_mes_mold_use
+<span class="keyword">SET</span> sj_qualified = <span class="str">'1'</span>
+<span class="keyword">OUTPUT</span>
+    inserted.sn_code,
+    inserted.sj_qualified <span class="keyword">AS</span> new_value,
+    deleted.sj_qualified <span class="keyword">AS</span> old_value
+<span class="keyword">WHERE</span> sn_code = <span class="str">'M001'</span>
+</div>
+
+<p>执行后会返回一个结果集，显示改了哪条、改前是什么、改后是什么。</p>
+
+<h3>11.3 OUTPUT ... INTO — 把变动存进表变量</h3>
+
+<p>更常用的是把变动存进表变量，后面慢慢处理：</p>
+
+<div class="code-block">
+<span class="keyword">DECLARE</span> @UpdatedRows <span class="keyword">TABLE</span> (
+    pg_no <span class="keyword">VARCHAR</span>(<span class="num">50</span>),
+    sn_code <span class="keyword">VARCHAR</span>(<span class="num">50</span>),
+    mold_no <span class="keyword">VARCHAR</span>(<span class="num">50</span>),
+    old_sj_qualified <span class="keyword">CHAR</span>(<span class="num">1</span>),
+    new_sj_qualified <span class="keyword">CHAR</span>(<span class="num">1</span>),
+    old_reason <span class="keyword">VARCHAR</span>(<span class="num">200</span>),
+    new_reason <span class="keyword">VARCHAR</span>(<span class="num">200</span>),
+    old_is_calc <span class="keyword">BIT</span>,
+    new_is_calc <span class="keyword">BIT</span>
+);
+
+<span class="keyword">UPDATE</span> dbo.tb_mes_mold_use
+<span class="keyword">SET</span> sj_qualified = <span class="str">'1'</span>,
+    sj_qualified_reason = <span class="str">'尺寸合格'</span>,
+    is_calc = <span class="num">1</span>
+<span class="keyword">OUTPUT</span>
+    inserted.pg_no,
+    inserted.sn_code,
+    inserted.mold_no,
+    deleted.sj_qualified,         <span class="comment">-- 更新前的旧值</span>
+    inserted.sj_qualified,        <span class="comment">-- 更新后的新值</span>
+    deleted.sj_qualified_reason,  <span class="comment">-- 旧值</span>
+    inserted.sj_qualified_reason, <span class="comment">-- 新值</span>
+    deleted.is_calc,              <span class="comment">-- 旧值</span>
+    inserted.is_calc              <span class="comment">-- 新值</span>
+<span class="keyword">INTO</span> @UpdatedRows(pg_no, sn_code, mold_no,
+                    old_sj_qualified, new_sj_qualified,
+                    old_reason, new_reason,
+                    old_is_calc, new_is_calc)
+<span class="keyword">WHERE</span> sn_code = <span class="str">'M001'</span>;
+
+<span class="comment">-- 后面就可以用 @UpdatedRows 做各种判断了</span>
+<span class="keyword">SELECT</span> * <span class="keyword">FROM</span> @UpdatedRows;
+</div>
+
+<h3>11.4 典型应用场景</h3>
+
+<p><b>场景一：数据变更日志</b></p>
+<p>每次更新都把"改前什么样、改成了什么样"记到日志表里，方便审计追溯。</p>
+
+<div class="code-block">
+<span class="keyword">UPDATE</span> tb_bas_mold
+<span class="keyword">SET</span> status = <span class="str">'10'</span>
+<span class="keyword">OUTPUT</span>
+    inserted.sn_code,
+    deleted.status <span class="keyword">AS</span> old_status,
+    inserted.status <span class="keyword">AS</span> new_status,
+    <span class="func">GETDATE</span>() <span class="keyword">AS</span> change_time
+<span class="keyword">INTO</span> tb_mold_status_log(sn_code, old_status, new_status, change_time)
+<span class="keyword">WHERE</span> sn_code = <span class="str">'M001'</span>;
+</div>
+
+<p><b>场景二：判断"首次"状态变化</b></p>
+<p>比如"首次合格"——只有从 0 变成 1 才算，已经是 1 的再改一次不算。</p>
+
+<div class="code-block">
+<span class="keyword">IF EXISTS</span> (
+    <span class="keyword">SELECT</span> <span class="num">1</span> <span class="keyword">FROM</span> @UpdatedRows
+    <span class="keyword">WHERE</span> old_sj_qualified = <span class="str">'0'</span>
+      <span class="keyword">AND</span> new_sj_qualified = <span class="str">'1'</span>
+)
+<span class="keyword">BEGIN</span>
+    <span class="comment">-- 首次合格，发奖励、更新统计...</span>
+    <span class="keyword">PRINT</span> <span class="str">'首次合格！'</span>
+<span class="keyword">END</span>
+</div>
+
+<p><b>场景三：批量操作后拿到受影响的行</b></p>
+<p>一次更新了几百条数据，想知道具体改了哪些，继续做后续处理，OUTPUT ... INTO 一把搞定。</p>
+
+<h3>11.5 触发器中的经典用法</h3>
+
+<p>OUTPUT 和 inserted/deleted 最常出现在触发器里。下面是一个完整的触发器例子：</p>
+
+<div class="code-block">
+<span class="keyword">CREATE TRIGGER</span> trg_mold_use_after_update
+<span class="keyword">ON</span> dbo.tb_mes_mold_use
+<span class="keyword">AFTER UPDATE</span>
+<span class="keyword">AS</span>
+<span class="keyword">BEGIN</span>
+    <span class="keyword">SET NOCOUNT ON</span>;
+
+    <span class="comment">-- 只有 sj_qualified 字段被更新时才处理</span>
+    <span class="keyword">IF</span> <span class="func">UPDATE</span>(sj_qualified)
+    <span class="keyword">BEGIN</span>
+        <span class="comment">-- 找出"首次合格"的行：旧值=0，新值=1</span>
+        <span class="keyword">INSERT INTO</span> dbo.tb_mold_first_pass_log
+            (sn_code, mold_no, pass_time, pg_no)
+        <span class="keyword">SELECT</span>
+            i.sn_code,
+            i.mold_no,
+            i.up_time,
+            i.pg_no
+        <span class="keyword">FROM</span> inserted i
+            <span class="keyword">INNER JOIN</span> deleted d
+                <span class="keyword">ON</span> i.pg_no = d.pg_no   <span class="comment">-- 主键关联新旧表</span>
+        <span class="keyword">WHERE</span> d.sj_qualified = <span class="str">'0'</span>
+          <span class="keyword">AND</span> i.sj_qualified = <span class="str">'1'</span>;
+    <span class="keyword">END</span>
+<span class="keyword">END</span>
+</div>
+
+<div class="tip">
+触发器里的 inserted 和 deleted 表是自动存在的，不用你定义，直接用就行。而且它们可能有多行数据（批量更新时），所以一定要用集合思维来写，不要假设只有一行。
+</div>
+
+<h3>11.6 UPDATE() 函数</h3>
+<p>在触发器里，还可以用 <code>UPDATE(列名)</code> 判断某一列有没有被修改：</p>
+
+<div class="code-block">
+<span class="keyword">IF</span> <span class="func">UPDATE</span>(sj_qualified)   <span class="comment">-- sj_qualified 列被更新了吗？</span>
+<span class="keyword">BEGIN</span>
+    <span class="comment">-- 做合格状态变更的逻辑</span>
+<span class="keyword">END</span>
+</div>
+
+<p>这样可以避免每次更新任何字段都触发全部逻辑，提升性能。</p>
+
+<h3>11.7 注意事项</h3>
+<ul>
+  <li>OUTPUT 子句返回的是<b>结果集</b>，可以直接给客户端，也可以 INTO 到表变量/临时表。</li>
+  <li>inserted 和 deleted 表是<b>只读</b>的，你不能改它们的数据。</li>
+  <li>批量更新时，inserted/deleted 里可能有很多行，触发器里千万不要写"假设只有一行"的逻辑。</li>
+  <li>INSTEAD OF 触发器也用这两张表，用法类似。</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="sec12">十二、子查询与 TOP 1 技巧</h2>
+
+<p>脚本中大量使用了 <code>TOP 1 ... ORDER BY</code> 的子查询模式，这是取"最新一条"或"最早一条"的经典写法。</p>
+
+<h3>11.1 取首次下架时间</h3>
+
+<div class="code-block">
+(
+    <span class="keyword">SELECT TOP</span> (<span class="num">1</span>)
+        a.trial_off_date
+    <span class="keyword">FROM</span> dbo.tb_mold_trial_detail a <span class="keyword">WITH</span> (NOLOCK)
+    <span class="keyword">WHERE</span> a.sn_code = t.sn_code
+          <span class="keyword">AND</span> a.trial_nowcount = <span class="num">1</span>
+          <span class="keyword">AND</span> a.trial_date &lt;= t.trial_date
+    <span class="keyword">ORDER BY</span> a.trial_date <span class="keyword">DESC</span>
+) <span class="keyword">AS</span> first_down_time
+</div>
+
+<p>逻辑拆解：</p>
+<ol>
+  <li>找到同模具（sn_code 相同）</li>
+  <li>第 1 次试模（trial_nowcount = 1）</li>
+  <li>不晚于当前试模日期（trial_date <= t.trial_date）</li>
+  <li>按日期倒序，取第一条（也就是最近的那一次第1次试模）</li>
+</ol>
+
+<h3>11.2 相关子查询 vs 独立子查询</h3>
+
+<table>
+<tr><th>类型</th><th>特点</th><th>例子</th></tr>
+<tr><td>相关子查询</td><td>子查询引用了外层表的列，每行都要执行一次</td><td>上面的 first_down_time</td></tr>
+<tr><td>独立子查询</td><td>子查询跟外层无关，只执行一次</td><td>SELECT MAX(price) FROM products</td></tr>
+</table>
+
+<div class="warn">
+相关子查询如果外层数据量大，性能可能很差（每行执行一次）。优化方式：改用 JOIN + 分组，或者先聚合到临时表再 JOIN。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec13">十三、TRY_CONVERT 安全转换</h2>
+
+<div class="code-block">
+<span class="keyword">SET</span> @trial_datetime_beg = <span class="func">TRY_CONVERT</span>(<span class="keyword">DATETIME</span>,
+    <span class="func">CONVERT</span>(<span class="keyword">VARCHAR</span>(<span class="num">10</span>), @trial_date_beg) + <span class="str">' 00:00:00'</span>)
+</div>
+
+<p><code>TRY_CONVERT</code> 和 <code>CONVERT</code> 的区别：</p>
+<ul>
+  <li><b>CONVERT</b>：转换失败就报错，整个语句中断</li>
+  <li><b>TRY_CONVERT</b>：转换失败返回 NULL，不报错</li>
+</ul>
+
+<p>这是 SQL Server 2012 开始有的函数，处理外部传入的参数时非常好用，避免因为格式不对整个存储过程崩掉。</p>
+
+<p>类似的还有：<code>TRY_CAST</code>、<code>TRY_PARSE</code>。</p>
+
+<!-- ============================================================ -->
+<h2 id="sec14">十四、整体架构与优化思路</h2>
+
+<h3>14.1 这个脚本的整体设计模式</h3>
+
+<p>脚本的结构可以概括为"三阶段填充"：</p>
+
+<table>
+<tr><th>阶段</th><th>做什么</th><th>写入哪个临时表</th></tr>
+<tr><td>第一阶段</td><td>从主表取试模任务核心数据，关联产品、模具、产线等基础信息</td><td>#mold_test_task</td></tr>
+<tr><td>第二阶段</td><td>补充模具档案信息、计算待挤压量、加载机台参数</td><td>#mold_info、#need_jy_qty、#jy_dev</td></tr>
+<tr><td>第三阶段</td><td>所有数据整合，补充字典名称、时限标准、设备参数等，生成最终结果</td><td>#t_Result1</td></tr>
+</table>
+
+<h3>14.2 为什么要分这么多临时表？</h3>
+<ul>
+  <li><b>性能</b>：每一步数据量都在缩小，后面的 JOIN 更快</li>
+  <li><b>可调试</b>：每个阶段都能单独 SELECT 出来看，排查问题方便</li>
+  <li><b>逻辑清晰</b>：每个临时表职责单一，可读性好</li>
+  <li><b>索引加持</b>：临时表上可以建索引，比复杂的子查询执行计划更可控</li>
+</ul>
+
+<h3>14.3 可以继续优化的地方</h3>
+
+<p><b>① 动态 SQL 的注入风险</b></p>
+<p>目前参数是直接拼进字符串的。更安全的写法是用 <code>sp_executesql</code> 参数化（见第四章第 4.3 节）。</p>
+
+<p><b>② 相关子查询改 JOIN</b></p>
+<p>first_down_time、first_test_time 这些每行执行一次的子查询，如果数据量大可以改成先分组算好再 JOIN。</p>
+
+<p><b>③ 索引检查</b></p>
+<p>主表 tb_mold_trial_detail 的 sn_code、mold_no、trial_date 等字段上是否有合适的索引，对性能影响很大。可以用 SSMS 的"包括实际执行计划"功能查看有没有"索引扫描"、"键查找"等慢操作。</p>
+
+<h3>14.4 学习路线建议</h3>
+<ol>
+  <li>先掌握基础的 SELECT / JOIN / WHERE / GROUP BY</li>
+  <li>然后学子查询、EXISTS、临时表</li>
+  <li>再进阶到动态 SQL、窗口函数（ROW_NUMBER 等）</li>
+  <li>最后学习执行计划分析和性能调优</li>
+</ol>
+
+<p style="text-align:center;color:#999;margin-top:40px;padding-top:20px;border-top:1px solid #eee;">
+  —— 教程完，祝你学习愉快 👍 ——
+</p>
+
+</div>
+</body>
+</html>
