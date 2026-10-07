@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教程目录首页</title>
+<style>
+*{box-sizing:border-box;font-family:system-ui, sans-serif;margin:0;padding:0}
+body{max-width:860px;margin:3rem auto;padding:0 20px;color:#222}
+h1{margin-bottom:24px;font-size:28px}
+.loading{color:#666}
+ul{list-style:none}
+li{margin:12px 0;padding:8px;border-bottom:1px solid #eee}
+a{font-size:18px;color:#0366d6;text-decoration:none}
+a:hover{text-decoration:underline}
+.tip{margin-top:30px;color:#555;font-size:14px}
+</style>
+</head>
+<body>
+<h1>📖 教程目录</h1>
+<div id="list" class="loading">正在加载文档列表……</div>
+<p class="tip">提示：往仓库上传html文件，刷新本页面即可自动新增链接</p>
+
+<script>
+const repoOwner = "aiiw";
+const repoName = "sqlserver-tutorial";
+const branch = "main";
+
+async function loadHtmlFiles() {
+  const resp = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/${branch}?recursive=1`);
+  const data = await resp.json();
+
+  if (!data.tree) {
+    return `<p>读取仓库文件失败：${data.message || '未知错误'}</p>`;
+  }
+
+  // 筛选html，排除index.html，按路径排序
+  const htmlFiles = data.tree
+    .filter(item => item.path.endsWith('.html') && item.path !== 'index.html')
+    .sort((a, b) => a.path.localeCompare(b.path));
+
+  if (htmlFiles.length === 0) {
+    return '<p>暂无文档，上传html文件后刷新页面</p>';
+  }
+
+  let html = '<ul>';
+  for (const file of htmlFiles) {
+    html += `<li><a href="${file.path}">${file.path}</a></li>`;
+  }
+  html += '</ul>';
+  return html;
+}
+
+loadHtmlFiles().then(html => {
+  document.getElementById('list').innerHTML = html;
+}).catch(err => {
+  document.getElementById('list').innerText = "加载异常：" + err;
+})
+</script>
+</body>
+</html>
