@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh‑CN">
+<head>
+<meta charset="UTF‑8">
+<meta name="viewport" content="width=device‑width, initial‑scale=1.0">
+<title>Excel365 新语法符号速查（. # @）</title>
+<style>
+*{box‑sizing:border‑box;margin:0;padding:0;}
+body{font‑family:"Microsoft YaHei",system‑ui,sans‑serif;background:#f7f8fa;color:#222;line‑height:1.7;max‑width:920px;margin:0 auto;padding:20px 16px;}
+h1{font‑size:28px;margin‑bottom:20px;color:#1f2937;}
+h2{margin:30px 0 12px;font‑size:22px;color:#2563eb;border‑left:4px solid #2563eb;padding‑left:10px;}
+h3{margin:20px 0 8px;font‑size:18px;color:#334155;}
+p{margin‑bottom:12px;}
+pre{background:#1e293b;color:#e2e8f0;padding:14px;border‑radius:8px;overflow‑x:auto;margin:14px 0;}
+code{background:#eef2ff;color:#2563eb;padding:2px 6px;border‑radius:4px;font‑family:Consolas,"Monaco",monospace;font‑size:0.95em;}
+table{width:100%;border‑collapse:collapse;margin:16px 0;background:#fff;}
+th,td{border:1px solid #ddd;padding:10px;text‑align:left;}
+th{background:#eff6ff;}
+.tip{background:#ecfdf5;border‑left:4px solid #10b981;padding:12px;border‑radius:0 6px 6px 0;margin:14px 0;}
+.warn{background:#fff7ed;border‑left:4px solid #f97316;padding:12px;border‑radius:0 6px 6px 0;margin:14px 0;}
+ul{padding‑left:22px;margin‑bottom:12px;}
+</style>
+</head>
+<body>
+<h1>Excel365 动态数组 · 新语法符号速查</h1>
+<p>三个符号 <strong>.（点）</strong>、<strong>#（井号）</strong>、<strong>@（艾特）</strong>，决定你的公式会不会报错、结果会不会平白多出0。<br>适用：Microsoft 365 / 新版WPS动态数组；含 LET / FILTER / UNIQUE 实战改写、边界易错点。</p>
+
+<h2>01 驱动问题：为什么结果多出0、直接报#CALC!</h2>
+<p>场景1：<code>=UNIQUE(A2:A101)</code>，结果列表尾部平白多出一个 <strong>0</strong>。</p>
+<p>场景2：LET内部写 <code>n1,SEQUENCE(n1)</code>，Excel直接抛出 <code>#CALC!</code>。</p>
+<div class="warn">
+<strong>根源：</strong>问题往往不是UNIQUE、SEQUENCE函数本身，而是你引用的区域把尾部空白单元格一并读入，空白在数组运算中会被当作0参与计算。
+</div>
+
+<h2>02 符号一：. 裁剪引用（TrimRef，裁剪区域头尾空白）</h2>
+<p>普通区域 <code>A2:A101</code>，会把区域内尾部空白单元格读入，空白转为0；<br>使用<strong>点号裁剪引用</strong>，只取区域内有效非空白数据，自动裁掉边缘空白。</p>
+
+<table>
+<tr><th>简写写法</th><th>作用说明</th><th>等价TRIMRANGE函数</th></tr>
+<tr><td><code>A2:.A101</code></td><td>只裁剪<strong>尾部</strong>空白（最常用）</td><td><code>TRIMRANGE(A2:A101,2,2)</code></td></tr>
+<tr><td><code>A2.:A101</code></td><td>只裁剪<strong>头部</strong>空白</td><td><code>TRIMRANGE(A2:A101,1,1)</code></td></tr>
+<tr><td><code>A2.:.A101</code></td><td>头部+尾部空白一起裁剪</td><td><code>TRIMRANGE(A2:A101,3,3)</code></td></tr>
+</table>
+
+<div class="tip">
+<strong>边界提醒：</strong>点号语法<strong>只裁空白单元格</strong>。如果单元格是真实数字0，它不会被移除；真实0需要配合 <code>FILTER(区域,区域<>0)</code>过滤。
+</div>
+
+<p>✅ 优化示例：</p>
+<pre>
+#旧写法（带尾部空白，容易多出0）
+=UNIQUE(A2:A101)
+
+#新写法（自动裁尾部空白）
+=UNIQUE(A2:.A101)
+</pre>
+
+<h2>03 符号二：# 溢出引用（Spill‑Range）</h2>
+<p>当一个单元格的公式向下溢出一片结果，使用<strong>左上角单元格+#</strong>，代表引用<strong>整个溢出数组</strong>，不需要手动写死行数。</p>
+
+<p>示例：</p>
+<ul>
+<li>D2单元格公式：<code>=UNIQUE(A2:.A101)</code>，结果从D2向下溢出成一整列；</li>
+<li>后续公式：<code>=FILTER(D2#, D2#<>0)</code>，<code>D2#</code>代表整个溢出出来的数组。</li>
+</ul>
+
+<ul>
+<li>源数据增删行，<code>D2#</code>引用范围自动跟随变化，不用手动修改；</li>
+<li>如果你只想要数组第一条值，不要用#，改用@。</li>
+</ul>
+
+<pre>
+#D2溢出后，引用全部溢出结果
+=FILTER(D2#, D2#<>0)
+</pre>
+
+<div class="warn">
+注意：#只能引用<strong>本工作表已经溢出的动态数组</strong>，不能跨表直接使用#。
+</div>
+
+<h2>04 符号三：@ 绝对交集运算符，数组压成单值</h2>
+<p><code>@</code>的作用：把数组<strong>压缩，只取第一个值</strong>，阻止向下溢出，输出单个结果到当前单元格。</p>
+
+<pre>
+#只取满足条件的第一条，不会向下溢出
+=@FILTER(A2:.A101, A2:.A101>10)
+</pre>
+
+<h3>@的三种典型场景</h3>
+<ul>
+<li>① 只需要<strong>一个结果</strong>，不希望公式溢出一片单元格；</li>
+<li>② 老表格升级Excel365，旧兼容公式Excel会自动补@；</li>
+<li>③ @只会拿数组第一条，不能用来取最大/最优值，需要筛选排序请用其他函数。</li>
+</ul>
+
+<div class="tip">
+当你发现公式突然溢出一大片单元格，而你只想要单个结果，可以考虑在最前面加上@。
+</div>
+
+<h2>05 综合实战：LET + FILTER + UNIQUE 从报错改到可用</h2>
+<h3>❌容易出错版本（区域包含尾部空白，多出0）</h3>
+<pre>
+=LET(
+    rng, A2:A101,
+    u, UNIQUE(rng),
+    FILTER(u,u<>0)
+)
+</pre>
+
+<h3>✅修复版本，加上点号裁剪引用</h3>
+<pre>
+=LET(
+    rng, A2:.A101,
+    u, UNIQUE(rng),
+    FILTER(u,u<>0,"无匹配")
+)
+</pre>
+
+<h2>06 三个符号快速记忆小结</h2>
+<table>
+<tr><th>符号</th><th>名字</th><th>作用</th></tr>
+<tr><td><strong>.</strong></td><td>裁剪引用TrimRef</td><td>裁剪区域头部/尾部空白，等价TRIMRANGE简写</td></tr>
+<tr><td><strong>#</strong></td><td>溢出引用</td><td>引用已经溢出的整片数组，跟随数据自动伸缩</td></tr>
+<tr><td><strong>@</strong></td><td>绝对交集运算符</td><td>数组压为单个值，取第一条，阻止溢出</td></tr>
+</table>
+
+<h2>07 常见报错排查</h2>
+<ul>
+<li><strong>结果多出0：</strong>原始区域包含尾部空白 → 使用 <code>A2:.A101</code>裁剪引用；真实0值用FILTER过滤。</li>
+<li><strong>#CALC!：</strong>LET内SEQUENCE接收0/空；FILTER无结果缺少兜底参数。</li>
+<li><strong>#SPILL!：</strong>溢出区域被其他内容占用，清理下方单元格。</li>
+<li><strong>#NAME!：</strong>点号裁剪引用、TRIMRANGE仅支持新版Excel365，旧版本不识别语法。</li>
+</ul>
+
+</body>
+</html>
